@@ -30,54 +30,58 @@ class AgentSettings:
 
     @classmethod
     def from_env(cls) -> "AgentSettings":
+        defaults = cls()
         return cls(
-            robot_id=os.getenv("BUMI_ROBOT_ID", cls.robot_id),
-            server_base_url=os.getenv("BUMI_SERVER_BASE_URL", cls.server_base_url),
+            robot_id=os.getenv("BUMI_ROBOT_ID", defaults.robot_id),
+            server_base_url=os.getenv(
+                "BUMI_SERVER_BASE_URL",
+                defaults.server_base_url,
+            ),
             heartbeat_interval_seconds=int(
                 os.getenv(
                     "BUMI_HEARTBEAT_INTERVAL_SECONDS",
-                    str(cls.heartbeat_interval_seconds),
+                    str(defaults.heartbeat_interval_seconds),
                 )
             ),
             battery_start_percent=int(
                 os.getenv(
                     "BUMI_BATTERY_START_PERCENT",
-                    str(cls.battery_start_percent),
+                    str(defaults.battery_start_percent),
                 )
             ),
-            bridge_mode=os.getenv("BUMI_BRIDGE_MODE", cls.bridge_mode),
-            control_mode=os.getenv("BUMI_CONTROL_MODE", cls.control_mode),
-            dds_host=os.getenv("BUMI_DDS_HOST", cls.dds_host),
+            bridge_mode=os.getenv("BUMI_BRIDGE_MODE", defaults.bridge_mode),
+            control_mode=os.getenv("BUMI_CONTROL_MODE", defaults.control_mode),
+            dds_host=os.getenv("BUMI_DDS_HOST", defaults.dds_host),
             dds_domain_id=int(
-                os.getenv("BUMI_DDS_DOMAIN_ID", str(cls.dds_domain_id))
+                os.getenv("BUMI_DDS_DOMAIN_ID", str(defaults.dds_domain_id))
             ),
             dds_network_interface=os.getenv(
                 "BUMI_DDS_NETWORK_INTERFACE",
-                cls.dds_network_interface,
+                defaults.dds_network_interface,
             ),
             state_poll_interval_seconds=float(
                 os.getenv(
                     "BUMI_STATE_POLL_INTERVAL_SECONDS",
-                    str(cls.state_poll_interval_seconds),
+                    str(defaults.state_poll_interval_seconds),
                 )
             ),
             move_x_limit=float(
-                os.getenv("BUMI_MOVE_X_LIMIT", str(cls.move_x_limit))
+                os.getenv("BUMI_MOVE_X_LIMIT", str(defaults.move_x_limit))
             ),
             move_yaw_limit=float(
-                os.getenv("BUMI_MOVE_YAW_LIMIT", str(cls.move_yaw_limit))
+                os.getenv("BUMI_MOVE_YAW_LIMIT", str(defaults.move_yaw_limit))
             ),
             action_edge_delay_ms=int(
                 os.getenv(
                     "BUMI_ACTION_EDGE_DELAY_MS",
-                    str(cls.action_edge_delay_ms),
+                    str(defaults.action_edge_delay_ms),
                 )
             ),
-            tts_mode=os.getenv("BUMI_TTS_MODE", cls.tts_mode),
-            agent_version=os.getenv("BUMI_AGENT_VERSION", cls.agent_version),
-            sdk_version=os.getenv("BUMI_SDK_VERSION", cls.sdk_version),
+            tts_mode=os.getenv("BUMI_TTS_MODE", defaults.tts_mode),
+            agent_version=os.getenv("BUMI_AGENT_VERSION", defaults.agent_version),
+            sdk_version=os.getenv("BUMI_SDK_VERSION", defaults.sdk_version),
             protocol_version=os.getenv(
                 "BUMI_PROTOCOL_VERSION",
-                cls.protocol_version,
+                defaults.protocol_version,
             ),
         )

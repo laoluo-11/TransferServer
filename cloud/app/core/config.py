@@ -12,13 +12,14 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
+        defaults = cls()
         return cls(
-            app_name=os.getenv("CLOUD_APP_NAME", cls.app_name),
-            app_version=os.getenv("CLOUD_APP_VERSION", cls.app_version),
+            app_name=os.getenv("CLOUD_APP_NAME", defaults.app_name),
+            app_version=os.getenv("CLOUD_APP_VERSION", defaults.app_version),
             heartbeat_timeout_seconds=int(
                 os.getenv(
                     "CLOUD_HEARTBEAT_TIMEOUT_SECONDS",
-                    str(cls.heartbeat_timeout_seconds),
+                    str(defaults.heartbeat_timeout_seconds),
                 )
             ),
         )
