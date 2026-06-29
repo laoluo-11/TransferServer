@@ -64,6 +64,18 @@ python -m pip install -U pip
 python -m pip install -r cloud\requirements.txt -r robot-agent\requirements.txt
 ```
 
+如果是在 Linux 服务器上使用 Anaconda，可执行：
+
+```bash
+cd /path/to/TransferSever
+source ~/anaconda3/etc/profile.d/conda.sh
+conda activate your_env_name
+python -m pip install -U pip
+python -m pip install -r cloud/requirements.txt -r robot-agent/requirements.txt
+```
+
+如果你的 shell 已经初始化过 conda，`source ~/anaconda3/etc/profile.d/conda.sh` 这句可以省略。
+
 ## 4. 启动项目
 
 需要两个终端窗口。
@@ -73,6 +85,15 @@ python -m pip install -r cloud\requirements.txt -r robot-agent\requirements.txt
 ```powershell
 cd C:\Users\15496\Desktop\TransferSever
 .\.venv\Scripts\Activate.ps1
+python -m uvicorn cloud.app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Linux + Anaconda 启动方式：
+
+```bash
+cd /path/to/TransferSever
+source ~/anaconda3/etc/profile.d/conda.sh
+conda activate your_env_name
 python -m uvicorn cloud.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
@@ -94,6 +115,23 @@ $env:BUMI_ROBOT_ID="bumi_001"
 $env:BUMI_BRIDGE_MODE="mock"
 python robot-agent\agent\main.py
 ```
+
+Linux + Anaconda 启动方式：
+
+```bash
+cd /path/to/TransferSever
+source ~/anaconda3/etc/profile.d/conda.sh
+conda activate your_env_name
+export BUMI_SERVER_BASE_URL="ws://127.0.0.1:8000"
+export BUMI_ROBOT_ID="bumi_001"
+export BUMI_BRIDGE_MODE="mock"
+python robot-agent/agent/main.py
+```
+
+说明：
+
+- 如果 `cloud` 和 `robot-agent` 跑在同一台 Linux 服务器上，`BUMI_SERVER_BASE_URL` 保持 `ws://127.0.0.1:8000` 即可。
+- 如果 `cloud` 跑在另一台机器上，需要把 `BUMI_SERVER_BASE_URL` 改成实际可访问地址，例如 `ws://117.69.252.58:8000`。
 
 ## 5. 当前如何验证功能
 
