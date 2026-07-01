@@ -12,9 +12,13 @@ class AgentSettings:
     battery_start_percent: int = 90
     bridge_mode: str = "mock"
     control_mode: str = "highcontrol"
+    sdk_root_dir: str = ""
+    sdk_build_dir: str = ""
+    sdk_module_name: str = "highcontrol_py"
     dds_host: str = "192.168.55.101"
     dds_domain_id: int = 0
     dds_network_interface: str = ""
+    dds_config_path: str = ""
     state_poll_interval_seconds: float = 0.2
     move_x_limit: float = 0.2
     move_yaw_limit: float = 0.3
@@ -51,6 +55,12 @@ class AgentSettings:
             ),
             bridge_mode=os.getenv("BUMI_BRIDGE_MODE", defaults.bridge_mode),
             control_mode=os.getenv("BUMI_CONTROL_MODE", defaults.control_mode),
+            sdk_root_dir=os.getenv("BUMI_SDK_ROOT_DIR", defaults.sdk_root_dir),
+            sdk_build_dir=os.getenv("BUMI_SDK_BUILD_DIR", defaults.sdk_build_dir),
+            sdk_module_name=os.getenv(
+                "BUMI_SDK_MODULE_NAME",
+                defaults.sdk_module_name,
+            ),
             dds_host=os.getenv("BUMI_DDS_HOST", defaults.dds_host),
             dds_domain_id=int(
                 os.getenv("BUMI_DDS_DOMAIN_ID", str(defaults.dds_domain_id))
@@ -58,6 +68,10 @@ class AgentSettings:
             dds_network_interface=os.getenv(
                 "BUMI_DDS_NETWORK_INTERFACE",
                 defaults.dds_network_interface,
+            ),
+            dds_config_path=os.getenv(
+                "BUMI_DDS_CONFIG_PATH",
+                defaults.dds_config_path,
             ),
             state_poll_interval_seconds=float(
                 os.getenv(

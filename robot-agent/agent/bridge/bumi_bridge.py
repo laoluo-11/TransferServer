@@ -10,6 +10,7 @@ from agent.bridge.bumi_sdk import (
     BumiHighControlAction,
     BumiSdkAdapter,
     HighControlCommand,
+    PyBindBumiSdkAdapter,
     SdkRobotState,
     StubBumiSdkAdapter,
 )
@@ -122,15 +123,25 @@ class BumiHighControlBridge(ControlBridge):
 
     async def _initialize_sdk_clients(self) -> None:
         self.logger.info(
-            "initialize DDS skeleton domain_id=%s network_interface=%s",
+            "initialize Bumi SDK domain_id=%s network_interface=%s sdk_root_dir=%s sdk_build_dir=%s dds_config_path=%s",
             self.settings.dds_domain_id,
             self.settings.dds_network_interface or "<default>",
-        )
-        self.logger.info(
-            "TODO: replace StubBumiSdkAdapter with real DDS SDK adapter implementation"
+            self.settings.sdk_root_dir or "<auto>",
+            self.settings.sdk_build_dir or "<auto>",
+            self.settings.dds_config_path or "<auto>",
         )
 
     def _build_dds_adapter(self) -> BumiSdkAdapter:
+        if self.settings.bridge_mode == "bumi_stub":
+            return StubBumiSdkAdapter(self.logger)
+        if self.settings.bridge_mode == "bumi":
+            return PyBindBumiSdkAdapter(
+                self.logger,
+                sdk_root_dir=self.settings.sdk_root_dir,
+                sdk_build_dir=self.settings.sdk_build_dir,
+                dds_config_path=self.settings.dds_config_path,
+                sdk_module_name=self.settings.sdk_module_name,
+            )
         return StubBumiSdkAdapter(self.logger)
 
     async def _poll_sdk_state_loop(self) -> None:

@@ -1,35 +1,56 @@
 # Bumi Transfer Server
 
-一个面向 Bumi 机器人的智能中间层项目，当前包含两部分：
+面向 Bumi 人形机器人的智能中间层项目。
+
+当前仓库包含三部分：
 
 - `cloud/`
-  - 云端控制服务
-  - 提供 REST API、WebSocket、Swagger 和本地调试面板
+  云端控制服务，提供 REST API、WebSocket、Swagger 和本地调试面板
 - `robot-agent/`
-  - 机器人本地执行代理
-  - 负责接收任务、执行技能、上报状态
+  机器人本地代理，负责接收任务、执行动作、上报状态
+- `shared/`
+  `cloud` 与 `robot-agent` 共用的协议模型、枚举和错误码
 
-当前项目已经能跑通一条完整的**模拟链路**：
+另外，仓库里还放了一份厂商 SDK 工程：
 
-`cloud -> robot-agent -> bridge(mock)`
+- `noetix_sdk_bumi-main/`
+  Bumi DDS SDK 源码工程，提供 `highcontrol_py` / `lowcontrol_py` Python 绑定
 
-这意味着你现在可以验证：
+## 当前状态
 
-- 任务创建
-- 状态上报
-- 任务执行流程
-- 中断任务
-- 调试面板联调
+- `mock` 模式已经可以跑通完整链路
+  `cloud -> robot-agent -> mock bridge`
+- `bumi_stub` 模式保留了 Bumi bridge 语义，但不依赖真实 SDK
+- `bumi` 模式已经接入真实 SDK 适配器
+  但要想真正控制机器人，必须先在机器人本地算力板上把 SDK 编译出来，并让 `robot-agent` 运行在机器人侧
 
-但**还不能直接控制真实 Bumi 机器人**，因为真实 `Bumi DDS SDK` 还没有接入。
+## 推荐架构
 
-## 1. 当前项目结构
+- `cloud` 部署在你的服务器
+- `robot-agent` 部署在机器人本地算力板
+- `noetix_sdk_bumi-main` 也放在机器人本地算力板
+- `robot-agent` 通过 `highcontrol_py` 调用 SDK
+- SDK 再通过 DDS 与机器人底层控制系统通信
+
+换句话说，真实控制链路应该是：
+
+`cloud -> robot-agent -> highcontrol_py -> Bumi DDS -> robot runtime`
+
+## 推荐环境
+
+- Python: `3.10`
+- `cloud` / `mock` 模式：Windows 或 Linux 都可以
+- 真实 SDK 模式：建议 `Ubuntu 22.04`，并与 SDK 自身要求保持一致
+- 真实 SDK 模式建议运行在机器人本地算力板，而不是云服务器
+
+## 目录结构
 
 ```text
 TransferSever/
   cloud/
   robot-agent/
   shared/
+  noetix_sdk_bumi-main/
   README.md
   Bumi智能中间层方案.md
   Bumi中间层接口协议.md
@@ -41,20 +62,9 @@ TransferSever/
 - `cloud/app/main.py`
 - `robot-agent/agent/main.py`
 
-## 2. 推荐环境
+## 1. 安装 Python 依赖
 
-推荐 Python 版本：
-
-- `Python 3.10`
-
-原因：
-
-- 当前代码语法对 `3.10+` 兼容
-- 后续如果接 Jetson、DDS SDK、厂家依赖，`3.10` 更稳妥
-
-## 3. 安装依赖
-
-在项目根目录打开 PowerShell：
+### Windows
 
 ```powershell
 cd C:\Users\15496\Desktop\TransferSever
@@ -64,23 +74,25 @@ python -m pip install -U pip
 python -m pip install -r cloud\requirements.txt -r robot-agent\requirements.txt
 ```
 
-如果是在 Linux 服务器上使用 Anaconda，可执行：
+### Linux
 
 ```bash
 cd /path/to/TransferSever
-source ~/anaconda3/etc/profile.d/conda.sh
-conda activate your_env_name
+python3.10 -m venv .venv
+source .venv/bin/activate
 python -m pip install -U pip
 python -m pip install -r cloud/requirements.txt -r robot-agent/requirements.txt
 ```
 
-如果你的 shell 已经初始化过 conda，`source ~/anaconda3/etc/profile.d/conda.sh` 这句可以省略。
+如果你用的是 conda，也可以直接在目标环境里执行最后两条 `pip` 命令。
 
-## 4. 启动项目
+## 2. 先跑通 mock 模式
 
-需要两个终端窗口。
+这是当前最推荐的第一步，先确认云端、协议、状态机、任务流都是通的。
 
-### 4.1 启动 cloud
+### 2.1 启动 cloud
+
+#### Windows
 
 ```powershell
 cd C:\Users\15496\Desktop\TransferSever
@@ -88,12 +100,11 @@ cd C:\Users\15496\Desktop\TransferSever
 python -m uvicorn cloud.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Linux + Anaconda 启动方式：
+#### Linux
 
 ```bash
 cd /path/to/TransferSever
-source ~/anaconda3/etc/profile.d/conda.sh
-conda activate your_env_name
+source .venv/bin/activate
 python -m uvicorn cloud.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
@@ -103,9 +114,9 @@ python -m uvicorn cloud.app.main:app --host 127.0.0.1 --port 8000 --reload
 - `http://127.0.0.1:8000/docs`
 - `http://127.0.0.1:8000/panel`
 
-### 4.2 启动 robot-agent
+### 2.2 启动 robot-agent
 
-当前推荐先跑模拟模式：
+#### Windows
 
 ```powershell
 cd C:\Users\15496\Desktop\TransferSever
@@ -116,164 +127,246 @@ $env:BUMI_BRIDGE_MODE="mock"
 python robot-agent\agent\main.py
 ```
 
-Linux + Anaconda 启动方式：
+#### Linux
 
 ```bash
 cd /path/to/TransferSever
-source ~/anaconda3/etc/profile.d/conda.sh
-conda activate your_env_name
+source .venv/bin/activate
 export BUMI_SERVER_BASE_URL="ws://127.0.0.1:8000"
 export BUMI_ROBOT_ID="bumi_001"
 export BUMI_BRIDGE_MODE="mock"
 python robot-agent/agent/main.py
 ```
 
-说明：
+### 2.3 在面板里验证
 
-- 如果 `cloud` 和 `robot-agent` 跑在同一台 Linux 服务器上，`BUMI_SERVER_BASE_URL` 保持 `ws://127.0.0.1:8000` 即可。
-- 如果 `cloud` 跑在另一台机器上，需要把 `BUMI_SERVER_BASE_URL` 改成实际可访问地址，例如 `ws://117.69.252.58:8000`。
-
-## 5. 当前如何验证功能
-
-推荐先打开本地调试面板：
+打开：
 
 - `http://127.0.0.1:8000/panel`
 
-你可以在面板里直接测试：
+建议按这个顺序测试：
 
-- `speak`
-- `move`
-- `gesture`
-- `play_teach`
-- `stop`
-- `interrupt`
+1. `speak`
+2. `gesture`
+3. `move`
+4. `play_teach`
+5. `stop`
+6. `interrupt`
 
-也可以用 Swagger：
+## 3. bridge 模式说明
 
-- `http://127.0.0.1:8000/docs`
+`robot-agent` 当前支持三种模式：
 
-## 6. 当前模式说明
+- `mock`
+  完全模拟，不依赖真实 SDK
+- `bumi_stub`
+  使用 Bumi bridge 语义，但底层仍是 stub，不会驱动真实机器人
+- `bumi`
+  调用真实 `highcontrol_py`，这是接真实 Bumi 的模式
 
-### 6.1 mock 模式
+如果只是联调中间层，推荐 `mock`。  
+如果要验证真实机器人，必须使用 `bumi`。
 
-这是当前默认可用模式：
+## 4. 真实 SDK 模式运行说明
 
-- `BUMI_BRIDGE_MODE=mock`
+这一部分建议在机器人本地算力板上完成。
 
-行为：
+### 4.1 你需要先具备什么
 
-- 会模拟机器人技能执行
-- 会更新任务状态和机器人状态
-- 不会控制真实 Bumi
+- 机器人本地算力板可以正常运行 Linux
+- `noetix_sdk_bumi-main` 已拷贝到算力板
+- SDK 所需系统依赖已按厂商文档安装
+- 机器人底层 DDS 环境可用
+- 机器人算力板能访问你的 `cloud` 服务地址
 
-适合：
+### 4.2 编译 SDK
 
-- 联调 `cloud`
-- 联调 `robot-agent`
-- 验证协议、状态机、任务流
+在机器人本地算力板上进入 SDK 目录：
 
-### 6.2 bumi 模式
+```bash
+cd /path/to/noetix_sdk_bumi-main
+chmod +x build.sh
+./build.sh
+```
 
-代码里已经预留了 Bumi bridge：
+编译成功后，通常应该能看到：
 
-- `BUMI_BRIDGE_MODE=bumi`
+- `build/`
+- `build/highcontrol_py*.so`
+- `build/lowcontrol_py*.so`
 
-但要注意：
+如果没有生成 `highcontrol_py`，`robot-agent` 的 `bumi` 模式就无法启动。
 
-- 目前这还是**SDK 对接骨架**
-- 没有真实 `Bumi DDS SDK` 时，不能实现真机控制
-- 等拿到 SDK 后，需要补 `robot-agent/agent/bridge/bumi_sdk.py` 的真实适配器实现
+### 4.3 启动真实 SDK 模式的 robot-agent
 
-## 7. 常用环境变量
+```bash
+cd /path/to/TransferSever
+source .venv/bin/activate
 
-`robot-agent` 当前支持的主要环境变量：
+export BUMI_SERVER_BASE_URL="ws://你的云端服务地址:8000"
+export BUMI_ROBOT_ID="bumi_001"
+export BUMI_BRIDGE_MODE="bumi"
+
+export BUMI_SDK_ROOT_DIR="/path/to/noetix_sdk_bumi-main"
+export BUMI_SDK_BUILD_DIR="/path/to/noetix_sdk_bumi-main/build"
+export BUMI_DDS_CONFIG_PATH="/path/to/noetix_sdk_bumi-main/config/dds.xml"
+export BUMI_SDK_MODULE_NAME="highcontrol_py"
+
+python robot-agent/agent/main.py
+```
+
+说明：
+
+- `BUMI_SDK_ROOT_DIR` 和 `BUMI_SDK_BUILD_DIR` 至少配置一个更稳妥
+- `BUMI_DDS_CONFIG_PATH` 推荐显式设置
+- 如果系统已经提前设置了 `CYCLONEDDS_URI`，适配器会优先使用它
+- `BUMI_SDK_MODULE_NAME` 默认就是 `highcontrol_py`，一般不用改
+
+### 4.4 cloud 端怎么启动
+
+真实机器人模式下，`cloud` 仍然在你的服务器上启动：
+
+```bash
+cd /path/to/TransferSever
+source .venv/bin/activate
+python -m uvicorn cloud.app.main:app --host 0.0.0.0 --port 8000
+```
+
+如果服务器有公网 IP 或局域网 IP，机器人侧的 `BUMI_SERVER_BASE_URL` 要填真实可访问地址，例如：
+
+```bash
+export BUMI_SERVER_BASE_URL="ws://192.168.1.20:8000"
+```
+
+## 5. 真实模式建议验证顺序
+
+不要一上来就做大动作，建议按下面顺序验证：
+
+1. 在 SDK 目录里确认能导入 `highcontrol_py`
+2. 单独运行 SDK 自带示例，确认 SDK 本身可用
+3. 启动 `robot-agent` 的 `bumi` 模式
+4. 观察 `robot-agent` 是否成功连上 `cloud`
+5. 先从 `/panel` 发 `speak`
+6. 再测 `gesture`
+7. 再测小幅度 `move`
+8. 最后再测 `play_teach`
+
+### 建议先做的导入测试
+
+```bash
+cd /path/to/noetix_sdk_bumi-main
+python -c "import sys; sys.path.insert(0, './build'); import highcontrol_py; print(highcontrol_py)"
+```
+
+如果这一步失败，先不要启动 `robot-agent`，先解决 SDK 编译或依赖问题。
+
+## 6. 常用环境变量
+
+### cloud / agent 通信
 
 - `BUMI_SERVER_BASE_URL`
-  - 默认：`ws://127.0.0.1:8000`
+  默认：`ws://127.0.0.1:8000`
 - `BUMI_ROBOT_ID`
-  - 默认：`bumi_001`
+  默认：`bumi_001`
+- `BUMI_HEARTBEAT_INTERVAL_SECONDS`
+  默认：`5`
+
+### bridge 控制
+
 - `BUMI_BRIDGE_MODE`
-  - 可选：`mock` / `bumi`
+  可选：`mock` / `bumi_stub` / `bumi`
 - `BUMI_CONTROL_MODE`
-  - 默认：`highcontrol`
-- `BUMI_DDS_HOST`
-  - 默认：`192.168.55.101`
-- `BUMI_DDS_DOMAIN_ID`
-  - 默认：`0`
-- `BUMI_DDS_NETWORK_INTERFACE`
-  - 默认空
-- `BUMI_STATE_POLL_INTERVAL_SECONDS`
-  - 默认：`0.2`
+  默认：`highcontrol`
 - `BUMI_MOVE_X_LIMIT`
-  - 默认：`0.2`
+  默认：`0.2`
 - `BUMI_MOVE_YAW_LIMIT`
-  - 默认：`0.3`
+  默认：`0.3`
 - `BUMI_ACTION_EDGE_DELAY_MS`
-  - 默认：`80`
+  默认：`80`
+- `BUMI_STATE_POLL_INTERVAL_SECONDS`
+  默认：`0.2`
+
+### SDK 相关
+
+- `BUMI_SDK_ROOT_DIR`
+  SDK 根目录
+- `BUMI_SDK_BUILD_DIR`
+  SDK 编译产物目录，通常是 `.../noetix_sdk_bumi-main/build`
+- `BUMI_SDK_MODULE_NAME`
+  默认：`highcontrol_py`
+- `BUMI_DDS_CONFIG_PATH`
+  `dds.xml` 路径
+- `CYCLONEDDS_URI`
+  如果系统层面已配置，SDK 适配器会优先使用
+
+### 预留或部署相关
+
+- `BUMI_DDS_HOST`
+- `BUMI_DDS_DOMAIN_ID`
+- `BUMI_DDS_NETWORK_INTERFACE`
 - `BUMI_TTS_MODE`
-  - 默认：`local_stub`
 
-## 8. 真实 Bumi 接入位置
+## 7. 当前真实 SDK 适配了什么
 
-拿到 SDK 后，主要改下面这些文件：
+`robot-agent` 现在已经接入了这些能力：
 
-- `robot-agent/agent/bridge/bumi_sdk.py`
-  - 实现真实 DDS SDK 适配器
-- `robot-agent/agent/bridge/bumi_bridge.py`
-  - 保留控制语义和安全策略
-- `robot-agent/agent/config.py`
-  - 补全真实部署配置
+- 自动尝试导入 `highcontrol_py`
+- 自动设置或复用 `CYCLONEDDS_URI`
+- 调用 `HighController.instance().init()`
+- 调用 `publish_cmd(ver, hor, action, index)`
+- 读取 `get_mode()`
+- 读取 `get_robot_bms_data()`
+- 读取 `get_imu_data()`
+- 读取 `get_joint_state()`
+- 将 SDK 状态同步到 `robot-agent` 的桥接快照
 
-当前代码已经预留了这些能力：
+当前动作映射主要覆盖：
 
-- Highcontrol 枚举
-- 动作边沿触发
-- `PLAYTEACH -> DEFAULT`
-- 状态轮询和状态回调入口
-- `x / yaw` 限幅
-- `safe_stop`
+- `move -> WALK`
+- `gesture(wave_hand) -> SWING`
+- `gesture(shake_hand) -> SHAKE`
+- `gesture(cheer) -> CHEER`
+- `gesture(tear) -> TEAR`
+- `play_teach(index) -> PLAYTEACH`
+- `stop / safe_stop -> DEFAULT`
 
-## 9. 建议验证顺序
+## 8. 常见问题
 
-如果只是验证当前代码：
+### 1. 启动时报 `No module named highcontrol_py`
 
-1. 启动 `cloud`
-2. 启动 `robot-agent` mock 模式
-3. 打开 `/panel`
-4. 发 `speak`
-5. 发 `gesture`
-6. 发 `move`
-7. 点 `interrupt`
-8. 去 `/api/v1/tasks` 和 `/api/v1/alerts` 查看结果
+说明 SDK 没编译出来，或者 `BUMI_SDK_BUILD_DIR` / `BUMI_SDK_ROOT_DIR` 没配对。
 
-如果以后拿到 SDK，建议按这个顺序验证：
+先检查：
 
-1. 单独验证 DDS SDK 连接
-2. 单独验证 bridge 的命令发布和状态订阅
-3. 再跑 `robot-agent`
-4. 最后跑 `cloud` 全链路
+```bash
+ls /path/to/noetix_sdk_bumi-main/build
+```
 
-## 10. 当前限制
+### 2. 启动时报 `BUMI_DDS_CONFIG_PATH does not exist`
 
-当前版本的限制：
+说明 `dds.xml` 路径写错了，直接改环境变量即可。
 
-- 没有真实 Bumi DDS SDK
-- 没有真实 TTS
-- 没有数据库持久化
-- `cloud` 目前主要是内存态
-- `robot-agent` 当前真机部分仍是骨架
+### 3. `robot-agent` 连上了，但机器人没动作
 
-这不影响：
+优先排查：
 
-- 做协议联调
-- 做任务流联调
-- 做中间层结构验证
-- 为后续 SDK 接入预留接口
+1. `highcontrol_py` 是否真的跑在机器人本地算力板
+2. DDS 网络和配置是否正确
+3. 机器人底层控制系统是否就绪
+4. 当前动作是否被安全状态拦截
 
-## 11. 相关文档
+### 4. 运行时报 `ModuleNotFoundError: No module named pydantic`
+
+说明 Python 依赖没装完整，重新执行：
+
+```bash
+python -m pip install -r cloud/requirements.txt -r robot-agent/requirements.txt
+```
+
+## 9. 相关文档
 
 - `Bumi智能中间层方案.md`
 - `Bumi中间层接口协议.md`
 - `Bumi中间层开发计划.md`
 
-如果后续需要让别人接手项目，建议先读这三份文档，再看本 README。
+如果后续要交接项目，建议先读这三份文档，再读本 README。
