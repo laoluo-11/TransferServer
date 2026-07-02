@@ -262,13 +262,22 @@ class OpenAILLMService(LLMService):
                         step.error = "unknown skill: %s" % func_name
                         step.result = {"status": "failed", "error": step.error}
                     else:
-                        task_req = CreateTaskRequest(
-                            skill=skill,
-                            params=func_args,
-                            source=TaskSource(type="agent_loop", name="openai"),
-                        )
-                        result = await execute_task(task_req)
-                        step.result = result
+                        ok, err_msg = _validate_skill_params(func_name, func_args)
+                        if not ok:
+                            step.error = err_msg
+                            step.result = {"status": "rejected", "error": err_msg}
+                            logger.warning(
+                                "Agent round %d: LLM param validation failed for %s: %s",
+                                round_num, func_name, err_msg,
+                            )
+                        else:
+                            task_req = CreateTaskRequest(
+                                skill=skill,
+                                params=func_args,
+                                source=TaskSource(type="agent_loop", name="openai"),
+                            )
+                            result = await execute_task(task_req)
+                            step.result = result
                 except Exception as exc:
                     step.error = str(exc)
                     step.result = {"status": "failed", "error": str(exc)}
@@ -351,6 +360,51 @@ def _func_to_skill(func_name: str) -> SkillName | None:
         "interrupt": SkillName.INTERRUPT_TASK,
     }
     return mapping.get(func_name)
+
+
+def _validate_skill_params(func_name: str, args: dict[str, Any]) -> tuple[bool, str]:
+    """Hard validate LLM tool call parameters before dispatching.
+
+    Returns (ok, error_message).
+    Even if the LLM hallucinates params, this catches them before they reach the robot.
+    """
+    if func_name == "move":
+        x = args.get("x", 0)
+        yaw = args.get("yaw", 0)
+        dur = args.get("duration_ms", 2000)
+        if not isinstance(x, (int, float)):
+            return False, "move x must be a number, got %s" % type(x).__name__
+        if not isinstance(yaw, (int, float)):
+            return False, "move yaw must be a number, got %s" % type(yaw).__name__
+        if abs(float(x)) > 0.2:
+            return False, "move x=%.2f exceeds limit ±0.2" % float(x)
+        if abs(float(yaw)) > 0.3:
+            return False, "move yaw=%.2f exceeds limit ±0.3" % float(yaw)
+        if not isinstance(dur, int) or dur < 100 or dur > 10000:
+            return False, "move duration_ms must be 100-10000, got %s" % dur
+
+    elif func_name == "gesture":
+        name = args.get("name", "")
+        allowed = {"wave_hand", "shake_hand", "cheer", "tear"}
+        if name not in allowed:
+            return False, "gesture name '%s' not allowed, must be one of %s" % (name, allowed)
+
+    elif func_name == "play_teach":
+        index = args.get("index", 0)
+        if not isinstance(index, int) or index < 1 or index > 100:
+            return False, "play_teach index must be 1-100, got %s" % index
+
+    elif func_name == "speak":
+        text = args.get("text", "")
+        if not text or not isinstance(text, str):
+            return False, "speak text is required and must be a string"
+        if len(text) > 500:
+            return False, "speak text too long (%d chars, max 500)" % len(text)
+
+    elif func_name in ("stop", "interrupt"):
+        pass  # no params to validate
+
+    return True, "" 
 
 
 def _place_msg_no_action(last_msg: str) -> str:

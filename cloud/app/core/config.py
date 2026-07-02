@@ -26,7 +26,7 @@ class LLMSettings:
     temperature: float = 0.3
     max_tokens: int = 1024
     system_prompt: str = ""
-    max_rounds: int = 10  # max iterations of agent loop (ReAct)
+    max_rounds: int = 30  # max iterations of agent loop (ReAct)
 
     @classmethod
     def from_env(cls, defaults: "LLMSettings | None" = None) -> "LLMSettings":
