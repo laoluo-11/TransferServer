@@ -48,7 +48,7 @@ ACTION_TO_WORKMODE: dict[BumiHighControlAction, int] = {
     BumiHighControlAction.STANDTOFALL: 14,
     BumiHighControlAction.DANCE1: 15,
     BumiHighControlAction.DANCE2: 16,
-    BumiHighControlAction.TEAR: 17,
+    BumiHighControlAction.TEAR: 17,  # WARNING: workmode 17 NOT listed in delivery manual's workmode table. VERIFY with real robot.
 }
 
 
@@ -199,6 +199,13 @@ class PyBindBumiSdkAdapter(BumiSdkAdapter):
             module = self._require_module()
             try:
                 sdk_action = getattr(module.ControlCmd, command.action.name)
+                # CRITICAL: verify parameter order with real robot.
+                # Bumi delivery manual C++ code:
+                #   controlcmd.axes()[0] = cmd.yaw;   // turning
+                #   controlcmd.axes()[1] = cmd.x;     // forward/backward
+                # If pybind passes (param1, param2) -> (axes[0], axes[1]), then
+                # x and yaw are SWAPPED below. TEST: send move(x=0.2,yaw=0) and
+                # verify robot moves FORWARD (not turns).
                 controller.publish_cmd(
                     float(command.x),
                     float(command.yaw),

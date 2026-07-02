@@ -20,11 +20,15 @@ from shared.protocol.enums import MotionState, SafetyState, SpeechState
 
 class BumiHighControlBridge(ControlBridge):
     """
-    Skeleton bridge for real Bumi integration.
+    Bridge for real Bumi robot integration via HighControl SDK.
 
-    This class is intentionally structured around the documented Highcontrol
-    interface so later integration only needs to replace the `_publish_*`
-    helper bodies with real SDK calls.
+    SAFETY NOTES (from Bumi delivery manual):
+    - Speed values are NORMALIZED coefficients (-1.0 to 1.0), NOT meters/radians.
+    - Move limits: x=±0.2, yaw=±0.3 are conservative defaults for safe operation.
+    - After each action, must send DEFAULT (x=0, yaw=0) to stop movement.
+    - PLAYTEACH is edge-triggered: send ONCE, then DEFAULT on subsequent cycles.
+    - WARNING: verify publish_cmd(x, yaw, ...) parameter order with real robot.
+      If axes[0]=yaw, axes[1]=x per C++ doc, our call may have x/yaw swapped.
     """
 
     def __init__(self, settings: AgentSettings) -> None:

@@ -20,8 +20,8 @@ class AgentSettings:
     dds_network_interface: str = ""
     dds_config_path: str = ""
     state_poll_interval_seconds: float = 0.2
-    move_x_limit: float = 0.2
-    move_yaw_limit: float = 0.3
+    move_x_limit: float = 0.2  # normalized speed coefficient (-1~1), NOT meters. Doc: axes[] range from joystick
+    move_yaw_limit: float = 0.3  # normalized speed coefficient (-1~1), NOT radians. Doc: axes[] range from joystick
     action_edge_delay_ms: int = 80
     tts_mode: str = "local_stub"
     agent_version: str = "0.1.0"

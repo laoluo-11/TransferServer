@@ -196,6 +196,12 @@ class OpenAILLMService(LLMService):
             logger.warning("Unknown tool call function: %s", func_name)
             return None
 
+        # Hard validate LLM parameters before dispatch
+        ok, err_msg = _validate_skill_params(func_name, arguments)
+        if not ok:
+            logger.warning("LLM param validation failed for %s: %s", func_name, err_msg)
+            return None
+
         return CreateTaskRequest(
             skill=skill,
             params=arguments,
@@ -206,6 +212,57 @@ class OpenAILLMService(LLMService):
 # ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
+
+
+
+def _validate_skill_params(func_name: str, args: dict[str, Any]) -> tuple[bool, str]:
+    """Hard validate LLM tool call parameters before dispatching.
+
+    Returns (ok, error_message).
+
+    SAFETY NOTE (from Bumi delivery manual):
+    - Speed values are NORMALIZED coefficients (-1.0 to 1.0), NOT meters/radians.
+    - Reference: controlcmd.axes()[] = [-1.0, 1.0] range from joystick mapping.
+    - Internal limits are conservative (0.2/0.3) for safe operation.
+    - Even if LLM hallucinates, this layer catches before reaching the robot.
+    """
+    if func_name == "move":
+        x = args.get("x", 0)
+        yaw = args.get("yaw", 0)
+        dur = args.get("duration_ms", 2000)
+        if not isinstance(x, (int, float)):
+            return False, "move x must be a number, got %s" % type(x).__name__
+        if not isinstance(yaw, (int, float)):
+            return False, "move yaw must be a number, got %s" % type(yaw).__name__
+        if abs(float(x)) > 0.2:
+            return False, "SAFETY: move x=%.2f exceeds normalized speed limit \u00b10.2" % float(x)
+        if abs(float(yaw)) > 0.3:
+            return False, "SAFETY: move yaw=%.2f exceeds normalized speed limit \u00b10.3" % float(yaw)
+        if not isinstance(dur, int) or dur < 100 or dur > 10000:
+            return False, "move duration_ms must be 100-10000, got %s" % dur
+
+    elif func_name == "gesture":
+        name = args.get("name", "")
+        allowed = {"wave_hand", "shake_hand", "cheer", "tear"}
+        if name not in allowed:
+            return False, "gesture name '%s' not allowed, must be one of %s" % (name, allowed)
+
+    elif func_name == "play_teach":
+        index = args.get("index", 0)
+        if not isinstance(index, int) or index < 1 or index > 100:
+            return False, "play_teach index must be 1-100, got %s" % index
+
+    elif func_name == "speak":
+        text = args.get("text", "")
+        if not text or not isinstance(text, str):
+            return False, "speak text is required and must be a string"
+        if len(text) > 500:
+            return False, "speak text too long (%d chars, max 500)" % len(text)
+
+    elif func_name in ("stop", "interrupt"):
+        pass
+
+    return True, ""
 
 def build_llm_service(settings: LLMSettings) -> LLMService:
     if settings.api_key:
