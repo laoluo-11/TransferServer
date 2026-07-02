@@ -366,7 +366,12 @@ def _validate_skill_params(func_name: str, args: dict[str, Any]) -> tuple[bool, 
     """Hard validate LLM tool call parameters before dispatching.
 
     Returns (ok, error_message).
-    Even if the LLM hallucinates params, this catches them before they reach the robot.
+
+    SAFETY NOTE (from Bumi delivery manual):
+    - Speed values are NORMALIZED coefficients (-1.0 to 1.0), NOT meters/radians.
+    - Reference: controlcmd.axes()[] = [-1.0, 1.0] range from joystick mapping.
+    - Internal limits are conservative (0.2/0.3) for safe operation.
+    - Even if LLM hallucinates, this layer catches before reaching the robot.
     """
     if func_name == "move":
         x = args.get("x", 0)
