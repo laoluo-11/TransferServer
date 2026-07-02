@@ -46,7 +46,7 @@
 ## 目录结构
 
 ```text
-TransferSever/
+TransferServer/
   cloud/
   robot-agent/
   shared/
@@ -67,7 +67,7 @@ TransferSever/
 ### Windows
 
 ```powershell
-cd C:\Users\15496\Desktop\TransferSever
+cd C:\Users\15496\Desktop\TransferServer
 py -3.10 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -U pip
@@ -77,7 +77,7 @@ python -m pip install -r cloud\requirements.txt -r robot-agent\requirements.txt
 ### Linux
 
 ```bash
-cd /path/to/TransferSever
+cd /path/to/TransferServer
 python3.10 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
@@ -95,7 +95,7 @@ python -m pip install -r cloud/requirements.txt -r robot-agent/requirements.txt
 #### Windows
 
 ```powershell
-cd C:\Users\15496\Desktop\TransferSever
+cd C:\Users\15496\Desktop\TransferServer
 .\.venv\Scripts\Activate.ps1
 python -m uvicorn cloud.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
@@ -103,7 +103,7 @@ python -m uvicorn cloud.app.main:app --host 127.0.0.1 --port 8000 --reload
 #### Linux
 
 ```bash
-cd /path/to/TransferSever
+cd /path/to/TransferServer
 source .venv/bin/activate
 python -m uvicorn cloud.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
@@ -119,7 +119,7 @@ python -m uvicorn cloud.app.main:app --host 127.0.0.1 --port 8000 --reload
 #### Windows
 
 ```powershell
-cd C:\Users\15496\Desktop\TransferSever
+cd C:\Users\15496\Desktop\TransferServer
 .\.venv\Scripts\Activate.ps1
 $env:BUMI_SERVER_BASE_URL="ws://127.0.0.1:8000"
 $env:BUMI_ROBOT_ID="bumi_001"
@@ -130,7 +130,7 @@ python robot-agent\agent\main.py
 #### Linux
 
 ```bash
-cd /path/to/TransferSever
+cd /path/to/TransferServer
 source .venv/bin/activate
 export BUMI_SERVER_BASE_URL="ws://127.0.0.1:8000"
 export BUMI_ROBOT_ID="bumi_001"
@@ -200,7 +200,7 @@ chmod +x build.sh
 ### 4.3 启动真实 SDK 模式的 robot-agent
 
 ```bash
-cd /path/to/TransferSever
+cd /path/to/TransferServer
 source .venv/bin/activate
 
 export BUMI_SERVER_BASE_URL="ws://你的云端服务地址:8000"
@@ -227,7 +227,7 @@ python robot-agent/agent/main.py
 真实机器人模式下，`cloud` 仍然在你的服务器上启动：
 
 ```bash
-cd /path/to/TransferSever
+cd /path/to/TransferServer
 source .venv/bin/activate
 python -m uvicorn cloud.app.main:app --host 0.0.0.0 --port 8000
 ```
