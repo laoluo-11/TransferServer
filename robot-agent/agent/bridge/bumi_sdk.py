@@ -44,11 +44,11 @@ ACTION_TO_WORKMODE: dict[BumiHighControlAction, int] = {
     BumiHighControlAction.STARTTEACH: 11,
     BumiHighControlAction.PLAYTEACH: 13,
     BumiHighControlAction.DANCE: 5,
-    BumiHighControlAction.FALLTOSTAND: 12,
-    BumiHighControlAction.STANDTOFALL: 14,
-    BumiHighControlAction.DANCE1: 15,
-    BumiHighControlAction.DANCE2: 16,
-    BumiHighControlAction.TEAR: 17,
+    BumiHighControlAction.FALLTOSTAND: 27,  # 倒地起身 (workmode table p.28)
+    BumiHighControlAction.STANDTOFALL: 28,  # 起身倒地 (workmode table p.28)
+    BumiHighControlAction.DANCE1: 31,  # 舞蹈模式1 (workmode table p.28)
+    BumiHighControlAction.DANCE2: 32,  # 舞蹈模式2 (workmode table p.28)
+    BumiHighControlAction.TEAR: 33,  # 擦眼泪动作 (workmode table p.28, workmode=33)
 }
 
 
@@ -181,6 +181,7 @@ class PyBindBumiSdkAdapter(BumiSdkAdapter):
             if self._controller is not None and self._module is not None:
                 try:
                     default_action = getattr(self._module.ControlCmd, "DEFAULT")
+                    # Send x=0, yaw=0, action=DEFAULT to stop — per delivery manual spec
                     self._controller.publish_cmd(0.0, 0.0, default_action, 0)
                 except Exception as exc:
                     self.logger.warning("failed to send SDK default stop during close: %s", exc)
@@ -199,9 +200,17 @@ class PyBindBumiSdkAdapter(BumiSdkAdapter):
             module = self._require_module()
             try:
                 sdk_action = getattr(module.ControlCmd, command.action.name)
+                # CRITICAL: verify parameter order with real robot.
+                # Bumi delivery manual C++ code:
+                #   controlcmd.axes()[0] = cmd.yaw;   // turning
+                #   controlcmd.axes()[1] = cmd.x;     // forward/backward
+                # If pybind passes (param1, param2) -> (axes[0], axes[1]), then
+                # x and yaw are SWAPPED below. TEST: send move(x=0.2,yaw=0) and
+                # verify robot moves FORWARD (not turns).
                 controller.publish_cmd(
-                    float(command.x),
+                    # axes[0]=yaw(turning), axes[1]=x(fwd/back) per delivery manual p.27/31
                     float(command.yaw),
+                    float(command.x),
                     sdk_action,
                     int(command.data),
                 )
