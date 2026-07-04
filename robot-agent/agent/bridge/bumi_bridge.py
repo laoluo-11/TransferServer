@@ -27,8 +27,8 @@ class BumiHighControlBridge(ControlBridge):
     - Move limits: x=±0.2, yaw=±0.3 are conservative defaults for safe operation.
     - After each action, must send DEFAULT (x=0, yaw=0) to stop movement.
     - PLAYTEACH is edge-triggered: send ONCE, then DEFAULT on subsequent cycles.
-    - WARNING: verify publish_cmd(x, yaw, ...) parameter order with real robot.
-      If axes[0]=yaw, axes[1]=x per C++ doc, our call may have x/yaw swapped.
+    - CRITICAL: publish_cmd(yaw, x, action, data) — axes[0]=yaw(转向), axes[1]=x(前进后退).
+      Fixed per delivery manual p.27/31. Still verify direction on real robot first.
     """
 
     def __init__(self, settings: AgentSettings) -> None:
