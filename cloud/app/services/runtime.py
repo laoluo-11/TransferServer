@@ -35,6 +35,7 @@ class CloudRuntime:
         self._tasks: dict[str, TaskRecord] = {}
         self._robot_tasks: dict[str, list[str]] = defaultdict(list)
         self._alerts: list[dict[str, Any]] = []
+        self._logger = logging.getLogger("cloud.runtime")
         self._lock = asyncio.Lock()
 
     async def connect(self, robot_id: str, websocket: WebSocket) -> None:
@@ -157,6 +158,13 @@ class CloudRuntime:
         handler = handlers.get(envelope.msg_type)
         if handler is not None:
             await handler(envelope)
+        else:
+            self._logger.warning(
+                "unhandled msg_type=%s from robot=%s trace=%s",
+                envelope.msg_type,
+                envelope.robot_id,
+                envelope.trace_id,
+            )
 
     async def _handle_agent_hello(self, envelope: Envelope) -> None:
         payload = AgentHelloPayload.model_validate(envelope.payload)
@@ -251,8 +259,13 @@ class CloudRuntime:
         task_ids = list(self._robot_tasks.get(robot_id, []))
         for task_id in task_ids:
             task = self._tasks.get(task_id)
-            if task is not None and task.status == TaskStatus.QUEUED:
-                await self.dispatch_task(task_id)
+            if task is not None:
+                if task.status == TaskStatus.QUEUED:
+                    await self.dispatch_task(task_id)
+                elif task.status == TaskStatus.DISPATCHED:
+                    task.status = TaskStatus.QUEUED
+                    task.updated_at = now_ms()
+                    await self.dispatch_task(task_id)
 
     async def _send_envelope(self, websocket: WebSocket, envelope: Envelope) -> None:
-        await websocket.send_json(json.loads(envelope.model_dump_json()))
+        await websocket.send_text(envelope.model_dump_json())
